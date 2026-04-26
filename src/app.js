@@ -14,6 +14,30 @@ const authRouter = require("./routes/auth.router");
 const connectMongoDB = require("./models/mongo.client");
 const connectToRedis = require("./services/redis.service");
 
+let servicesInitialized = false;
+let servicesInitializationPromise = null;
+
+const initializeServices = async () => {
+  if(servicesInitialized){
+    return;
+  }
+
+  if(!servicesInitializationPromise) {
+    servicesInitializationPromise = (async () => {
+      await connectMongoDB();
+      connectToRedis();
+      servicesInitialized = true;
+      console.log("Servicios inicializados correctamente");
+    }).catch((error) => {
+      servicesInitializationPromise = null;
+      throw error;
+    });
+  }
+
+  return servicesInitializationPromise;
+}
+/* 
+
 //Conexion a Mongo DB
 (async () => {
   try {
@@ -37,11 +61,23 @@ const connectToRedis = require("./services/redis.service");
     process.exit(1);
   }
 })();
-
+ */
 app.use(express.json());
 app.use(loggerMiddleWare);
 app.use(morgan("dev"));
 app.use(cors());
+
+app.use(async (req, res, next) => {
+  try{
+    await initializeServices();
+    next();
+  }catch (error) {
+    console.log("No se pudieron inicializar los servicios", error);
+    res.status(500).json({
+      error: "No se pudieron inicializar los servicios"
+    });
+  }
+});
 
 app.use("/", publicRouter);
 app.use("/v1/auth", authRouter);
@@ -51,7 +87,5 @@ app.use(authMiddleware);
 // Private
 app.use("/v1", privateRouter);
 
-const PORT = process.env.PORT;
-app.listen(PORT, () => {
-  console.log(`Listen & serve PORT: ${PORT}`);
-});
+
+module.exports = app;
