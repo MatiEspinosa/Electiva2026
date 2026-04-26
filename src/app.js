@@ -28,7 +28,7 @@ const initializeServices = async () => {
       connectToRedis();
       servicesInitialized = true;
       console.log("Servicios inicializados correctamente");
-    }).catch((error) => {
+    })().catch((error) => {
       servicesInitializationPromise = null;
       throw error;
     });
